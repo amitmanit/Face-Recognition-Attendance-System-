@@ -135,5 +135,3 @@ Here are some screenshots of the UI I created 👇
 
 ---
 
-
-Kya tum chahte ho mai tumhe ek **ready-made `images/` folder structure** aur sample placeholder images banake de du, taaki bas replace karna ho?
