@@ -55,23 +55,13 @@ Here are some screenshots of the UI I created 👇
 
 ### 🏠 1. Homepage / Dashboard
 
-![Homepage](images/homepage.png)
-
 ### 📷 2. Capture Image Section
-
-![Capture](images/capture.png)
 
 ### 🖼️ 3. Upload Image Section
 
-![Upload](images/upload.png)
-
 ### ⏰ 4. Date & Time Selection
 
-![Date-Time](images/datetime.png)
-
 ### 📊 5. Results Display Section
-
-![Results](images/results.png)
 
 *(Make sure to place your 5 images inside an `images/` folder in the project root and name them accordingly.)*
 
