@@ -1,0 +1,43 @@
+import firebase_admin
+from firebase_admin import credentials, firestore
+
+# --- Firebase Initialization ---
+# This code initializes the Firebase Admin SDK, allowing your backend to securely
+# interact with your Firestore database.
+
+try:
+    # Load the service account key from the JSON file.
+    # Make sure 'serviceAccountKey.json' is in the same directory.
+    cred = credentials.Certificate("serviceAccountKey.json")
+
+    # Initialize the Firebase app.
+    firebase_admin.initialize_app(cred)
+
+    # Get a client instance for the Firestore database.
+    db = firestore.client()
+    print("Firebase connection successful.")
+except Exception as e:
+    print(f"Error initializing Firebase: {e}")
+    db = None
+
+def mark_attendance(name):
+    """
+    Marks attendance by adding a new document to the 'attendance' collection in Firestore.
+    
+    Args:
+        name (str): The name of the person to mark as present.
+    """
+    if db is None:
+        print("Firestore client not initialized. Cannot mark attendance.")
+        return
+
+    try:
+        # This adds a new document with a unique, auto-generated ID.
+        # It stores the person's name and a server-side timestamp.
+        doc_ref = db.collection('attendance').add({
+            'name': name,
+            'timestamp': firestore.SERVER_TIMESTAMP  # Uses the server's time for accuracy
+        })
+        print(f"Successfully added {name} to Firestore with document ID: {doc_ref.id}")
+    except Exception as e:
+        print(f"Error marking attendance for {name} in Firestore: {e}")
