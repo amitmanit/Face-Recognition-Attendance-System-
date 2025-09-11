@@ -1,7 +1,7 @@
 import cv2
 import face_recognition
 import os
-from datetime import datetime
+from firebase_config import mark_attendance # NEW: Import the Firebase function
 
 path = 'Training_images'
 images = []
@@ -22,19 +22,7 @@ def findEncodings(images):
         encodeList.append(encode)
     return encodeList
 
-#def createAttendanceFile():
-#    with open('Attendance.csv', 'w') as f:
-#       f.write('Name,Date,Time\n')
-
-def markAttendance(name):
-    with open('Attendance.csv', 'a') as f:
-        now = datetime.now()
-        date = datetime.today().strftime('%d/%m/%Y')
-        dtString = now.strftime('%H:%M:%S')
-        f.write(f'{name},{date},{dtString}\n')
-
-# Create a new attendance file
-#createAttendanceFile()
+# REMOVED: The old CSV-based markAttendance function is gone.
 
 encodeListKnown = findEncodings(images)
 print('Encoding Complete')
@@ -43,6 +31,9 @@ cap = cv2.VideoCapture(0)
 
 while True:
     success, img = cap.read()
+    if not success:
+        break
+    
     imgS = cv2.resize(img, (0, 0), None, 0.25, 0.25)
     imgS = cv2.cvtColor(imgS, cv2.COLOR_BGR2RGB)
 
@@ -56,15 +47,19 @@ while True:
 
         if matches[matchIndex]:
             name = classNames[matchIndex].upper()
+            
+            # Use the new Firebase function to mark attendance
+            mark_attendance(name)
+
             y1, x2, y2, x1 = faceLoc
             y1, x2, y2, x1 = y1 * 4, x2 * 4, y2 * 4, x1 * 4
             cv2.rectangle(img, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.rectangle(img, (x1, y2 - 35), (x2, y2), (0, 255, 0), cv2.FILLED)
             cv2.putText(img, name, (x1 + 6, y2 - 6), cv2.FONT_HERSHEY_COMPLEX, 1, (255, 255, 255), 2)
-            markAttendance(name)
 
     cv2.imshow('Webcam', img)
-    if cv2.waitKey(1) == 27:  # Press 'Esc' key to exit the loop
+    # Press 'Esc' to exit
+    if cv2.waitKey(1) & 0xFF == 27:
         break
 
 cap.release()
