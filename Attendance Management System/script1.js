@@ -1,111 +1,106 @@
+// This is the new, complete code for script1.js
+
 document.addEventListener("DOMContentLoaded", function () {
-  // Add event listeners
+  // --- ACTION 1: Add your Firebase project configuration here ---
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    // ... add the rest of your config details
+  };
+
+  // --- ACTION 2: Initialize Firebase ---
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+
+  // Sign in anonymously for secure database access
+  auth.signInAnonymously().then(() => {
+    console.log("Firebase user signed in.");
+    // --- ACTION 3: Set up the new real-time listener ---
+    setupRealtimeListener();
+  }).catch(error => {
+    console.error("Firebase sign-in error:", error);
+  });
+
+  // --- Event listeners for the main action buttons (this part stays similar) ---
   const buttons = document.querySelectorAll(".buttons button");
   buttons.forEach((button) => {
     button.addEventListener("click", function () {
       const method = this.textContent.trim();
       if (method === "Turn On Camera") {
-        window.alert(
-          "Please wait sometime for the Face Recognition Program to activate. It takes sometime. Please note that you have to press 'Esc' button to exit it."
-        );
-        // Send a request to the Flask API to run live_face_recognition_attendance.py
         runLiveFaceRecognition();
       } else if (method === "Upload an Image(s)") {
-        window.alert(
-          "Please wait sometime for the Face Recognition Program to activate. It takes sometime. Please note that you have to press 'Esc' button to exit it."
-        );
-        // Open file input dialog
         const fileInput = document.createElement("input");
         fileInput.type = "file";
-        fileInput.id = "fileInput";
-        fileInput.accept = "image/*";
-        fileInput.multiple = true; //changed
-        fileInput.addEventListener("change", function (event) {
-          //   const selectedFile = event.target.files[0];
-          const selectedFiles = event.target.files;
-          // Send a request to the Flask API with the selected image
-          runImageFaceRecognition(selectedFiles);
+        fileInput.multiple = true;
+        fileInput.addEventListener("change", (event) => {
+          runImageFaceRecognition(event.target.files);
         });
         fileInput.click();
       }
     });
   });
 
-  const submitButton = document.querySelector(".checkattendance button");
-  submitButton.addEventListener("click", function () {
-    const date = document.querySelector(".datepicking input").value;
-    const fromTime = document.querySelector(".fromtimepicking input").value;
-    const toTime = document.querySelector(".totimepicking input").value;
-    // Send a request to the Flask API with date, from time, and to time parameters
-    runAttendanceQuery(date, fromTime, toTime);
-  });
+  // --- ACTION 4: The new core function ---
+  function setupRealtimeListener() {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
-  // Functions
+    db.collection("attendance")
+      .where("timestamp", ">=", startOfToday)
+      .orderBy("timestamp", "desc")
+      .onSnapshot((querySnapshot) => {
+        const attendanceRecords = [];
+        const uniqueNames = new Set();
+        querySnapshot.forEach((doc) => {
+          const record = doc.data();
+          if (!uniqueNames.has(record.name)) {
+            uniqueNames.add(record.name);
+            attendanceRecords.push(record.name);
+          }
+        });
+        displayResult(attendanceRecords, "Today's Attendance (Live)");
+      });
+  }
+
+  // --- ACTION 5: Simplify the trigger functions ---
   function runLiveFaceRecognition() {
-    // Make a Fetch API request to the Flask API
-    fetch("http://localhost:5000/run_live_face_recognition", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    })
-      .then((response) => response.json())
-      .then((data) => displayResult(data.results))
-      .catch((error) => console.error("Error:", error));
+    displayResult(null, "Live camera is active...");
+    fetch("http://localhost:5000/run_live_face_recognition", { method: "POST" })
+      .then(res => res.json())
+      .then(data => console.log("Live recognition triggered:", data));
   }
 
   function runImageFaceRecognition(imageFiles) {
-    // Create a FormData object to send the file
     const formData = new FormData();
     for (const file of imageFiles) {
       formData.append("images[]", file);
     }
-    // formData.append("image", imageFiles);
-
-    // Make a Fetch API request to the Flask API
-    fetch("http://localhost:5000/run_image_face_recognition", {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => displayResult(data.results))
-      .catch((error) => console.error("Error:", error));
+    displayResult(null, "Processing Image(s)...");
+    fetch("http://localhost:5000/run_image_face_recognition", { method: "POST", body: formData })
+      .then(res => res.json())
+      .then(data => console.log("Image recognition triggered:", data));
   }
 
-  function runAttendanceQuery(date, fromTime, toTime) {
-    // Make a Fetch API request to the Flask API with date, from time, and to time parameters
-    if (date == "" || fromTime == "" || toTime == "")
-      window.alert("Please enter all the details");
-    else {
-      fetch(
-        `http://localhost:5000/query_attendance?date=${date}&fromTime=${fromTime}&toTime=${toTime}`,
-        {
-          method: "GET",
-        }
-      )
-        .then((response) => response.json())
-        .then((data) => displayResult(data.results))
-        .catch((error) => console.error("Error:", error));
-    }
-  }
-
-  function displayResult(results) {
+  // The displayResult function stays mostly the same
+  function displayResult(results, title) {
     const resultsContainer = document.querySelector(".results");
-    // Clear previous results
     resultsContainer.innerHTML = "";
-    let counter = 0;
-    var h3 = document.createElement("h3");
-    var text = document.createTextNode("Students Attended");
-    h3.appendChild(text);
-    resultsContainer.appendChild(h3);
-    // Display new results
-    results.forEach((result) => {
-      const listItem = document.createElement("div");
-      if (!(result == "No Students Found")) {
-        listItem.textContent = counter + 1 + ") " + result;
-        counter = counter + 1;
-      } else listItem.textContent = result;
-      resultsContainer.appendChild(listItem);
+    const titleElement = document.createElement("h3");
+    titleElement.textContent = title;
+    resultsContainer.appendChild(titleElement);
+    if (results === null) return;
+    if (!results || results.length === 0) {
+      const item = document.createElement("div");
+      item.textContent = "No students have been marked present yet.";
+      resultsContainer.appendChild(item);
+      return;
+    }
+    results.forEach((result, index) => {
+      const item = document.createElement("div");
+      item.textContent = `${index + 1}) ${result}`;
+      resultsContainer.appendChild(item);
     });
   }
 });
